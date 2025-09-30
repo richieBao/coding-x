@@ -2,4 +2,12 @@
 
 npx create-docusaurus@latest site classic
 
+npm run start
 
+npm run build
+npm run serve   # 本地预览构建结果
+
+ https://richiebao.github.io/coding-x/
+
+
+ 
