@@ -19,7 +19,7 @@ function HomepageHeader() {
         <div className={styles.buttons}>
           <Link
             className="button button--secondary button--lg"
-            to="/docs/intro">
+            to="/docs/ue/From-Parametric-Designin-Architecture-to-Level-Design-in-Unreal-Engine">
             From Parametric Design in Architecture to Level Design in Unreal Engine 🧩🛠️🎮
           </Link>
         </div>

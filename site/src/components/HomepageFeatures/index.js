@@ -4,36 +4,62 @@ import styles from './styles.module.css';
 
 const FeatureList = [
   {
-    title: 'Easy to Use',
-    Svg: require('@site/static/img/undraw_docusaurus_mountain.svg').default,
+    title: 'Learning Programming Languages',
+    Svg: require('@site/static/img/programming.svg').default, // replace with your icon
     description: (
       <>
-        Docusaurus was designed from the ground up to be easily installed and
-        used to get your website up and running quickly.
+        Start with Python, then explore C, C++, and C# via comparative learning.
+        Coding-X aims to build a cross-language platform that helps learners quickly
+        master fundamentals and transfer skills between languages.
       </>
     ),
   },
   {
-    title: 'Focus on What Matters',
-    Svg: require('@site/static/img/undraw_docusaurus_tree.svg').default,
+    title: 'Exploring Algorithm Logic',
+    Svg: require('@site/static/img/algorithm.svg').default,
     description: (
       <>
-        Docusaurus lets you focus on your docs, and we&apos;ll do the chores. Go
-        ahead and move your docs into the <code>docs</code> directory.
+        Algorithms are the core logic of problem-solving. Interactive charts make
+        computational steps and results visible, enabling deeper understanding and
+        extension beyond traditional textbooks.
       </>
     ),
   },
   {
-    title: 'Powered by React',
-    Svg: require('@site/static/img/undraw_docusaurus_react.svg').default,
+    title: 'Integrating Professional Knowledge',
+    Svg: require('@site/static/img/integration.svg').default,
     description: (
       <>
-        Extend or customize your website layout by reusing React. Docusaurus can
-        be extended while reusing the same header and footer.
+        Integrate spatial data analysis, intelligent design methods, embedded systems,
+        digital construction, and AR/VR simulation. Coding-X develops data tools,
+        design tools, and broader applications that expand professional boundaries.
+      </>
+    ),
+  },
+  {
+    title: 'From Digital Construction to Maker Culture',
+    Svg: require('@site/static/img/maker.svg').default,
+    description: (
+      <>
+        Build on microcontrollers, embedded systems, and open-source robotics (ROS).
+        Programming meets hardware: prototype devices, learn by making, and explore
+        interactive toolchains for design assistance.
+      </>
+    ),
+  },
+  {
+    title: 'Game Engines for AR/VR Applications',
+    Svg: require('@site/static/img/gameengine.svg').default,
+    description: (
+      <>
+        Leverage Unreal/Unity for domain applications—architecture, medicine,
+        engineering, and art. Combine simulation with hardware; C++/C# provide the
+        foundation for immersive interaction and limitless possibilities.
       </>
     ),
   },
 ];
+
 
 function Feature({Svg, title, description}) {
   return (
