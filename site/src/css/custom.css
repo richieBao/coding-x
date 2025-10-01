@@ -28,3 +28,26 @@
   --ifm-color-primary-lightest: #4fddbf;
   --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.3);
 }
+
+.grid{
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(3, minmax(0,1fr));
+}
+@media (max-width: 996px){
+  .grid{ grid-template-columns: repeat(2, minmax(0,1fr)); }
+}
+@media (max-width: 600px){
+  .grid{ grid-template-columns: 1fr; }
+}
+.grid .button{
+  width: 100%;            /* 让按钮在网格中铺满一格 */
+  text-align: left;       /* 可选：左对齐文字 */
+}
+.downloadGrid .button {
+  width: 100%;         /* 占满所在的列 */
+  white-space: normal; /* 允许文字换行 */
+  word-break: break-word; /* 长单词/文件名换行 */
+  text-align: center;  /* 居中显示文字 */
+}
+

@@ -19,7 +19,7 @@ function HomepageHeader() {
         <div className={styles.buttons}>
           <Link
             className="button button--secondary button--lg"
-            to="/docs/ue/Modular-Building">
+            to="/docs/ue/Plugin-Modular-Building">
             Modular-Building 🧩🛠️🎮
           </Link>
         </div>
