@@ -226,6 +226,30 @@ Reduces manual drag-and-drop work, enables repeatable parametric-like building a
 
 ---
 
+
+### 8. Merge Components → StaticMesh
+
+![VoxelNest CSV data](./img/voxelnest/voxelNest_26.png)
+
+**Purpose:**
+Convert selected Blueprint components or placed actors into standalone Static Mesh assets for optimization, reuse, archiving, or Nanite conversion in Unreal Engine.
+
+**How to Use:**
+
+* Select one or more **Blueprints** (in Content Browser) and/or **Actors** (in the Level).
+* Open the Modular Building EUW and choose **Merge Components → StaticMesh**.
+* Specify a target folder (e.g., `/Game/MergedAssets/BuildingParts/`).
+* (Optional) Enable **Nanite**.
+* Click **Run Merge** — system auto-spawns temp preview actors (for BP), collects visible StaticMeshComponents, merges them, builds & saves StaticMesh, and syncs to Content Browser.
+
+**Benefit:**
+Transforms modular Blueprint assemblies or placed building elements into **single StaticMesh assets**.
+Greatly improves **performance**, **ease of reuse**, **LOD/Nanite workflows**, and supports **asset export pipelines** for large projects or procedural generation results.
+
+
+
+---
+
 The Modular Building Plugin integrates asset management, collision setup, material assignment, Blueprint harvesting, grouping, data import, and automated assembly into a single workflow.
 
 By leveraging these seven tools, teams can drastically reduce manual repetitive tasks, ensure consistency across assets, and enable data-driven design-to-engine pipelines.
