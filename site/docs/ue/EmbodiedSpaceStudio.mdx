@@ -12,6 +12,9 @@ import YouTubeEmbed from '@site/src/components/YouTubeEmbed';
 
 Embodied Space Studio is an Unreal Editor workflow panel for authoring embodied motion from text, spatial constraints, saved motion data, and batch prompt collections. It connects the editor to the Kimodo bridge/runtime service, lets you stage prompt timing and body constraints in the Timeline, previews generated motion on either the embedded Preview viewport or the main Level viewport, and turns the selected motion into UE Animation Sequence assets for SOMA, Manny, Quinn, MetaHuman, or a custom retarget target.
 
+The motions were generated using Kimodo, a controllable human motion generation system described in:
+Davis Rempe et al., "Kimodo: Scaling Controllable Human Motion Generation," arXiv:2603.15546, 2026. https://arxiv.org/abs/2603.15546
+
 :::info Main workflow
 
 1. Use **Generate** to start or check the bridge service, refresh the model catalog, choose dataset/skeleton/version, load a model, choose the source preview mesh or default SOMA, and generate motion from Timeline prompts and constraints.
@@ -32,6 +35,313 @@ When a button is disabled, check the status summaries above the active section. 
 
 ![ess](./img/embodiedSpaceStudio/ess_01_opt.webp)
 
+## Kimodo Docker Runtime Setup
+
+Embodied Space Studio uses a local Docker Compose runtime to serve Kimodo motion generation to Unreal Engine. The Unreal Engine plugin is distributed through **Fab**, while the Docker bridge runtime is distributed separately through GitHub:
+
+```text
+https://github.com/richieBao/embodied-space-studio-kimodo-bridge
+```
+
+In this bridge repository, `kimodo-main` is the Docker Compose project name declared in `docker-compose.yaml`. The always-on services are `text-encoder` and `ue-bridge`; `demo` is optional for the standalone Kimodo web demo.
+
+![ess](./img/embodiedSpaceStudio/ess_03_opt.webp)
+
+### Install order
+
+1. Buy/download and install the **Embodied Space Studio** plugin from Fab into your Unreal project.
+2. Install and start Docker Desktop.
+3. Clone or download the GitHub bridge repository.
+4. Request Hugging Face access to `meta-llama/Meta-Llama-3-8B-Instruct`, then authenticate with a Hugging Face token.
+5. Download the required Kimodo checkpoint and text encoder model files from their official model pages.
+6. Copy `.env.example` to `.env`, then edit paths for your machine.
+7. Start the Docker bridge and connect to it from the plugin's **Generate** tab.
+
+### Prerequisite: install Docker Desktop
+
+Docker is required before you can start the Kimodo runtime. Embodied Space Studio does not install Docker automatically.
+
+1. Install **Docker Desktop** for Windows from the official Docker website.
+2. Start Docker Desktop and wait until the Docker Engine is running.
+3. On Windows, use the WSL2 backend. For GPU generation, also install a compatible NVIDIA driver and make sure Docker Desktop can access the GPU.
+4. Open PowerShell and confirm Docker is available:
+
+```powershell
+docker --version
+docker compose version
+```
+
+:::note
+Docker is required for **Generate**, **Refresh Models**, **Connect Docker Bridge**, and other Kimodo runtime features. Loading already generated previews or using some offline Unreal-only utilities may not require the Docker runtime to be running.
+:::
+
+### Python environment note
+
+The official Kimodo local virtual-environment setup uses Python 3.10:
+
+```powershell
+conda create -n kimodo python=3.10
+conda activate kimodo
+```
+
+Embodied Space Studio normally runs Kimodo through Docker, so users do not need to create this local Python environment unless they want to run Kimodo scripts outside the containers.
+
+### Clone the bridge repository
+
+Choose any local folder for the bridge. The commands below use `<BridgeRoot>` as the folder where you cloned or extracted the GitHub repository.
+
+```powershell
+git clone https://github.com/richieBao/embodied-space-studio-kimodo-bridge.git
+cd embodied-space-studio-kimodo-bridge
+```
+
+The bridge folder should contain:
+
+```text
+<BridgeRoot>/docker-compose.yaml
+<BridgeRoot>/Dockerfile
+<BridgeRoot>/scripts
+<BridgeRoot>/checkpoints
+<BridgeRoot>/text-encoders
+```
+
+Separately, your Unreal project must already contain the Fab plugin:
+
+```text
+<YourUnrealProject>/Plugins/KimodoMotionAuthoring/Resources/Python/kimodo_ue_service/server.py
+```
+
+The Docker `ue-bridge` service mounts your Unreal project read-only and runs that Fab-installed `server.py` inside the container.
+
+### Runtime layout
+
+| Service | Container name | Purpose | Host access |
+|:--|:--|:--|:--|
+| `text-encoder` | `text-encoder` | Loads the LLM2Vec text encoder and provides embeddings to Kimodo services. | `http://127.0.0.1:9550` |
+| `ue-bridge` | `ue-bridge` | Runs the Unreal bridge API used by the plugin Generate / Models / Health actions. | `http://127.0.0.1:18027/bridge/v1` |
+| `demo` | `demo` | Optional Kimodo interactive demo service. | `http://127.0.0.1:7860` by default |
+
+The services are built from `Dockerfile` into the `kimodo:1.0` image. The image is based on NVIDIA PyTorch, installs the Kimodo Python runtime, and runs through the container entrypoint that maps files back to the host user.
+
+### Download model files
+
+Model weights are intentionally not included in the GitHub repository. Download them from the official model pages and review their licenses before use.
+
+Download the Kimodo checkpoint:
+
+```text
+https://huggingface.co/nvidia/Kimodo-SOMA-RP-v1.1
+```
+
+Place it under:
+
+```text
+<BridgeRoot>/checkpoints/Kimodo-SOMA-RP-v1.1/model.safetensors
+<BridgeRoot>/checkpoints/Kimodo-SOMA-RP-v1.1/config.yaml
+```
+
+Before downloading the text encoder, open the gated Meta Llama model page, request access, and wait until your Hugging Face account has been granted access:
+
+```text
+https://huggingface.co/meta-llama/Meta-Llama-3-8B-Instruct
+```
+
+Then authenticate on the host machine:
+
+```powershell
+pip install --upgrade huggingface_hub
+hf auth login
+```
+
+Kimodo's LLM2Vec text encoder uses three pieces:
+
+```text
+Raw gated base model:
+https://huggingface.co/meta-llama/Meta-Llama-3-8B-Instruct
+
+MNTP LoRA adapter:
+https://huggingface.co/McGill-NLP/LLM2Vec-Meta-Llama-3-8B-Instruct-mntp
+
+Supervised LoRA adapter:
+https://huggingface.co/McGill-NLP/LLM2Vec-Meta-Llama-3-8B-Instruct-mntp-supervised
+```
+
+Place them under:
+
+```text
+<BridgeRoot>/text-encoders/McGill-NLP/LLM2Vec-Meta-Llama-3-8B-Instruct-mntp/
+<BridgeRoot>/text-encoders/McGill-NLP/LLM2Vec-Meta-Llama-3-8B-Instruct-mntp-adapter/
+<BridgeRoot>/text-encoders/McGill-NLP/LLM2Vec-Meta-Llama-3-8B-Instruct-mntp-supervised/
+```
+
+Example manual download commands:
+
+```powershell
+hf download meta-llama/Meta-Llama-3-8B-Instruct --local-dir text-encoders/McGill-NLP/LLM2Vec-Meta-Llama-3-8B-Instruct-mntp
+hf download McGill-NLP/LLM2Vec-Meta-Llama-3-8B-Instruct-mntp --local-dir text-encoders/McGill-NLP/LLM2Vec-Meta-Llama-3-8B-Instruct-mntp-adapter
+hf download McGill-NLP/LLM2Vec-Meta-Llama-3-8B-Instruct-mntp-supervised --local-dir text-encoders/McGill-NLP/LLM2Vec-Meta-Llama-3-8B-Instruct-mntp-supervised
+```
+
+The `LLM2Vec-Meta-Llama-3-8B-Instruct-mntp` local folder should include the gated raw Meta Llama files such as `model.safetensors.index.json` and shard files. The `...-mntp-adapter` and `...-mntp-supervised` folders are LoRA adapters and should include `adapter_model.safetensors` and `adapter_config.json`.
+
+The `McGill-NLP/LLM2Vec-Meta-Llama-3-8B-Instruct-mntp` page may look small in the Hugging Face file browser because it is the MNTP adapter, not the full 8B base model. The full 8B shard files come from the gated `meta-llama/Meta-Llama-3-8B-Instruct` repository.
+
+Do not download a separate `McGill-NLP/LLM2Vec-Meta-Llama-3-8B-Instruct-mntp-adapter` repository. The recommended local folder is named `LLM2Vec-Meta-Llama-3-8B-Instruct-mntp-adapter` only to make its runtime role clear. Its source is `McGill-NLP/LLM2Vec-Meta-Llama-3-8B-Instruct-mntp`.
+
+Runtime loading order:
+
+1. Load raw `meta-llama/Meta-Llama-3-8B-Instruct` files from the local `LLM2Vec-Meta-Llama-3-8B-Instruct-mntp` folder as the base model.
+2. Merge the MNTP adapter from `TEXT_ENCODER_MNTP_ADAPTER_HOST`; by default this is the local `LLM2Vec-Meta-Llama-3-8B-Instruct-mntp-adapter` folder downloaded from `McGill-NLP/LLM2Vec-Meta-Llama-3-8B-Instruct-mntp`.
+3. Apply `McGill-NLP/LLM2Vec-Meta-Llama-3-8B-Instruct-mntp-supervised` as the final supervised adapter exposed by the `text-encoder` service.
+
+### Configure `.env`
+
+From `<BridgeRoot>`, copy the example file:
+
+```powershell
+Copy-Item .env.example .env
+```
+
+Then edit `.env` for your machine. Use forward slashes in Windows paths for Docker volume mapping.
+
+```text
+ESS_UNREAL_PROJECT_ROOT=C:/Users/YourName/Documents/Unreal Projects/YourProject
+HF_HOME_HOST=C:/Users/YourName/.cache/huggingface
+HOST_USER=<your-windows-user-name>
+SERVER_PORT=7860
+TEXT_ENCODER_BASE_MODEL_HOST=./text-encoders/McGill-NLP/LLM2Vec-Meta-Llama-3-8B-Instruct-mntp
+TEXT_ENCODER_MNTP_ADAPTER_HOST=./text-encoders/McGill-NLP/LLM2Vec-Meta-Llama-3-8B-Instruct-mntp-adapter
+TEXT_ENCODER_ADAPTER_HOST=./text-encoders/McGill-NLP/LLM2Vec-Meta-Llama-3-8B-Instruct-mntp-supervised
+TEXT_ENCODER_DEVICE=auto
+UE_BRIDGE_HOST_PORT=18027
+```
+
+`HF_HOME_HOST` should point to the Hugging Face cache that contains the token created by `hf auth login`. If you prefer to keep the cache inside the bridge folder, place the token under `<BridgeRoot>/.cache/huggingface/token` and use `HF_HOME_HOST=./.cache/huggingface`.
+
+`ESS_UNREAL_PROJECT_ROOT` must point to the Unreal project that has the Fab plugin installed. The bridge expects this file to exist:
+
+```text
+<YourUnrealProject>/Plugins/KimodoMotionAuthoring/Resources/Python/kimodo_ue_service/server.py
+```
+
+`TEXT_ENCODER_DEVICE` is a Docker startup-level setting for the `text-encoder` service:
+
+```text
+TEXT_ENCODER_DEVICE=auto
+```
+
+```text
+TEXT_ENCODER_DEVICE=cuda
+```
+
+```text
+TEXT_ENCODER_DEVICE=cpu
+```
+
+Use `auto` for CUDA when available with CPU fallback, `cuda` to force GPU, or `cpu` to force CPU text encoding. Use `cuda`, not `gpu`; Kimodo passes this value to PyTorch device selection.
+
+### Start the Unreal bridge runtime
+
+From PowerShell:
+
+```powershell
+cd "<BridgeRoot>"
+.\scripts\Start-EmbodiedSpaceStudio-Bridge.ps1
+```
+
+This starts `text-encoder` and `ue-bridge` in detached mode. The `ue-bridge` service waits for the `text-encoder` healthcheck before becoming available to Unreal Engine.
+
+To rebuild the Docker image before starting:
+
+```powershell
+.\scripts\Start-EmbodiedSpaceStudio-Bridge.ps1 -Build
+```
+
+To also start the optional Kimodo demo service:
+
+```powershell
+.\scripts\Start-EmbodiedSpaceStudio-Bridge.ps1 -WithDemo
+```
+
+Equivalent Docker Compose command:
+
+```powershell
+docker compose up -d text-encoder ue-bridge
+```
+
+### Apply `.env` changes and recreate containers
+
+Docker reads environment variables when a container is created. If you edit `.env`, especially `TEXT_ENCODER_DEVICE`, simply clicking Stop/Start or Restart in Docker Desktop keeps the old container configuration and the old value.
+
+After changing `.env`, run:
+
+```powershell
+cd "<BridgeRoot>"
+docker compose up -d --force-recreate --no-build text-encoder ue-bridge
+```
+
+Use `--build` only when the Docker image itself needs to be rebuilt, such as after changing `Dockerfile`, `docker_requirements.txt`, or dependency files:
+
+```powershell
+cd "<BridgeRoot>"
+docker compose up -d --build --force-recreate text-encoder ue-bridge
+```
+
+Verify the active device setting inside the recreated container:
+
+```powershell
+docker exec text-encoder python -c "import os; print(os.environ.get('TEXT_ENCODER_DEVICE'))"
+```
+
+### Verify the runtime
+
+Run the packaged verification script:
+
+```powershell
+cd "<BridgeRoot>"
+.\scripts\Verify-EmbodiedSpaceStudio-Bridge.ps1
+```
+
+A healthy bridge should respond at:
+
+```text
+http://127.0.0.1:18027/bridge/v1/health
+http://127.0.0.1:18027/bridge/v1/models
+```
+
+The expected model key for this packaged setup is:
+
+```text
+kimodo-soma-rp-v1.1
+```
+
+You can also inspect the containers directly:
+
+```powershell
+docker ps --filter "name=text-encoder"
+docker ps --filter "name=ue-bridge"
+cd "<BridgeRoot>"
+docker compose logs -f ue-bridge
+```
+
+### Stop or reset the runtime
+
+To stop the services while keeping containers available for a faster restart:
+
+```powershell
+cd "<BridgeRoot>"
+.\scripts\Stop-EmbodiedSpaceStudio-Bridge.ps1
+```
+
+To remove the compose containers completely:
+
+```powershell
+.\scripts\Stop-EmbodiedSpaceStudio-Bridge.ps1 -RemoveContainers
+```
+
+:::tip
+If Unreal Engine cannot connect from the Generate tab, first check `http://127.0.0.1:18027/bridge/v1/health`, then confirm that Docker Desktop is running and that `text-encoder` and `ue-bridge` are active. The Unreal plugin's **Connect Docker Bridge** button is intended to drive the same local bridge runtime expected by these scripts.
+:::
 ## User Manual
 
 <Tabs groupId="embodied-space-studio-manual">
@@ -50,7 +360,8 @@ Connect Unreal Editor to the Kimodo runtime, choose the active generation model 
 ### Runtime Output
 
 1. **Output Name Prefix** is used when naming generated job outputs and follow-up assets.
-2. **Runtime Log** records user-facing Generate/Export/Batch actions. **Copy Log** sends it to the clipboard; **Clear** removes the local display text.
+2. **Text Encoder Device** is configured in Docker, not per Generate request. Edit `TEXT_ENCODER_DEVICE` in `KimodoBridge/.env`, then recreate `text-encoder` and `ue-bridge` with `docker compose up -d --force-recreate --no-build text-encoder ue-bridge`.
+3. **Runtime Log** records user-facing Generate/Export/Batch actions. **Copy Log** sends it to the clipboard; **Clear** removes the local display text.
 
 ### Model Selection
 
