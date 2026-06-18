@@ -45,17 +45,23 @@ https://github.com/richieBao/embodied-space-studio-kimodo-bridge
 
 In this bridge repository, `kimodo-main` is the Docker Compose project name declared in `docker-compose.yaml`. The always-on services are `text-encoder` and `ue-bridge`; `demo` is optional for the standalone Kimodo web demo.
 
+The Docker bridge is self-contained. It can be placed in any local folder and does not need to live inside or beside an Unreal project. Any Unreal project with the Embodied Space Studio / KimodoMotionAuthoring plugin can connect to the same local bridge endpoint:
+
+```text
+http://127.0.0.1:18027/bridge/v1
+```
+
 ![ess](./img/embodiedSpaceStudio/ess_03_opt.webp)
 
 ### Install order
 
-1. Buy/download and install the **Embodied Space Studio** plugin from Fab into your Unreal project.
+1. Buy/download and install the **Embodied Space Studio** plugin from Fab into any Unreal project that will use Kimodo generation.
 2. Install and start Docker Desktop.
-3. Clone or download the GitHub bridge repository.
+3. Download or clone the GitHub bridge repository to a user-chosen folder.
 4. Request Hugging Face access to `meta-llama/Meta-Llama-3-8B-Instruct`, then authenticate with a Hugging Face token.
-5. Download the required Kimodo checkpoint and text encoder model files from their official model pages.
+5. Download the required Kimodo checkpoint and text encoder model files into the bridge folder.
 6. Copy `.env.example` to `.env`, then edit paths for your machine.
-7. Start the Docker bridge and connect to it from the plugin's **Generate** tab.
+7. Build/start the Docker bridge and connect to `http://127.0.0.1:18027/bridge/v1` from the plugin's **Generate** tab.
 
 ### Prerequisite: install Docker Desktop
 
@@ -86,7 +92,7 @@ conda activate kimodo
 
 Embodied Space Studio normally runs Kimodo through Docker, so users do not need to create this local Python environment unless they want to run Kimodo scripts outside the containers.
 
-### Clone the bridge repository
+### Download the bridge repository
 
 Choose any local folder for the bridge. The commands below use `<BridgeRoot>` as the folder where you cloned or extracted the GitHub repository.
 
@@ -95,37 +101,41 @@ git clone https://github.com/richieBao/embodied-space-studio-kimodo-bridge.git
 cd embodied-space-studio-kimodo-bridge
 ```
 
+Downloading the repository ZIP from GitHub and extracting it to a folder such as `D:/EmbodiedSpaceStudio/KimodoBridge` is also fine.
+
 The bridge folder should contain:
 
 ```text
 <BridgeRoot>/docker-compose.yaml
 <BridgeRoot>/Dockerfile
+<BridgeRoot>/ue_bridge_service
 <BridgeRoot>/scripts
 <BridgeRoot>/checkpoints
 <BridgeRoot>/text-encoders
 ```
 
-Separately, your Unreal project must already contain the Fab plugin:
-
-```text
-<YourUnrealProject>/Plugins/KimodoMotionAuthoring/Resources/Python/kimodo_ue_service/server.py
-```
-
-The Docker `ue-bridge` service mounts your Unreal project read-only and runs that Fab-installed `server.py` inside the container.
+The `ue-bridge` container runs the bridge API service packaged in `<BridgeRoot>/ue_bridge_service`; it no longer mounts a specific Unreal project or runs a `server.py` from the Fab plugin folder.
 
 ### Runtime layout
 
 | Service | Container name | Purpose | Host access |
 |:--|:--|:--|:--|
 | `text-encoder` | `text-encoder` | Loads the LLM2Vec text encoder and provides embeddings to Kimodo services. | `http://127.0.0.1:9550` |
-| `ue-bridge` | `ue-bridge` | Runs the Unreal bridge API used by the plugin Generate / Models / Health actions. | `http://127.0.0.1:18027/bridge/v1` |
+| `ue-bridge` | `ue-bridge` | Runs the bridge API used by the plugin Generate / Models / Health actions. | `http://127.0.0.1:18027/bridge/v1` |
 | `demo` | `demo` | Optional Kimodo interactive demo service. | `http://127.0.0.1:7860` by default |
 
-The services are built from `Dockerfile` into the `kimodo:1.0` image. The image is based on NVIDIA PyTorch, installs the Kimodo Python runtime, and runs through the container entrypoint that maps files back to the host user.
+The services are built from `Dockerfile` into the `kimodo:1.0` image. The image is based on NVIDIA PyTorch, installs the Kimodo Python runtime, includes the local `kimodo-viser` fork, and runs through the container entrypoint that maps files back to the host user.
 
 ### Download model files
 
 Model weights are intentionally not included in the GitHub repository. Download them from the official model pages and review their licenses before use.
+
+Install the Hugging Face CLI and authenticate on the host machine:
+
+```powershell
+pip install --upgrade huggingface_hub
+hf auth login
+```
 
 Download the Kimodo checkpoint:
 
@@ -140,17 +150,16 @@ Place it under:
 <BridgeRoot>/checkpoints/Kimodo-SOMA-RP-v1.1/config.yaml
 ```
 
+Example command:
+
+```powershell
+hf download nvidia/Kimodo-SOMA-RP-v1.1 --local-dir checkpoints/Kimodo-SOMA-RP-v1.1
+```
+
 Before downloading the text encoder, open the gated Meta Llama model page, request access, and wait until your Hugging Face account has been granted access:
 
 ```text
 https://huggingface.co/meta-llama/Meta-Llama-3-8B-Instruct
-```
-
-Then authenticate on the host machine:
-
-```powershell
-pip install --upgrade huggingface_hub
-hf auth login
 ```
 
 Kimodo's LLM2Vec text encoder uses three pieces:
@@ -205,24 +214,20 @@ Copy-Item .env.example .env
 Then edit `.env` for your machine. Use forward slashes in Windows paths for Docker volume mapping.
 
 ```text
-ESS_UNREAL_PROJECT_ROOT=C:/Users/YourName/Documents/Unreal Projects/YourProject
-HF_HOME_HOST=C:/Users/YourName/.cache/huggingface
+HF_HOME_HOST=./.cache/huggingface
 HOST_USER=<your-windows-user-name>
 SERVER_PORT=7860
+TEXT_ENCODER_DEVICE=auto
 TEXT_ENCODER_BASE_MODEL_HOST=./text-encoders/McGill-NLP/LLM2Vec-Meta-Llama-3-8B-Instruct-mntp
 TEXT_ENCODER_MNTP_ADAPTER_HOST=./text-encoders/McGill-NLP/LLM2Vec-Meta-Llama-3-8B-Instruct-mntp-adapter
 TEXT_ENCODER_ADAPTER_HOST=./text-encoders/McGill-NLP/LLM2Vec-Meta-Llama-3-8B-Instruct-mntp-supervised
-TEXT_ENCODER_DEVICE=auto
 UE_BRIDGE_HOST_PORT=18027
+KIMODO_OUTPUT_HOST=D:/EmbodiedSpaceStudio/KimodoBridge/outputs
 ```
 
 `HF_HOME_HOST` should point to the Hugging Face cache that contains the token created by `hf auth login`. If you prefer to keep the cache inside the bridge folder, place the token under `<BridgeRoot>/.cache/huggingface/token` and use `HF_HOME_HOST=./.cache/huggingface`.
 
-`ESS_UNREAL_PROJECT_ROOT` must point to the Unreal project that has the Fab plugin installed. The bridge expects this file to exist:
-
-```text
-<YourUnrealProject>/Plugins/KimodoMotionAuthoring/Resources/Python/kimodo_ue_service/server.py
-```
+`KIMODO_OUTPUT_HOST` is the host folder where generated `motion.npz`, `ue_preview_manifest.json`, logs, diagnostics, and prompt metadata are written. The packaged start script resolves `KIMODO_OUTPUT_HOST=./outputs` to an absolute bridge-local path automatically. If you run raw `docker compose` commands, set `KIMODO_OUTPUT_HOST` to an absolute Windows path so Unreal can open generated results.
 
 `TEXT_ENCODER_DEVICE` is a Docker startup-level setting for the `text-encoder` service:
 
@@ -246,15 +251,15 @@ From PowerShell:
 
 ```powershell
 cd "<BridgeRoot>"
-.\scripts\Start-EmbodiedSpaceStudio-Bridge.ps1
+.\scripts\Start-EmbodiedSpaceStudio-Bridge.ps1 -Build
 ```
 
-This starts `text-encoder` and `ue-bridge` in detached mode. The `ue-bridge` service waits for the `text-encoder` healthcheck before becoming available to Unreal Engine.
+This builds the image if needed, starts `text-encoder` and `ue-bridge` in detached mode, and prints the bridge health/model URLs plus the host output directory.
 
-To rebuild the Docker image before starting:
+After the first build, start without rebuilding:
 
 ```powershell
-.\scripts\Start-EmbodiedSpaceStudio-Bridge.ps1 -Build
+.\scripts\Start-EmbodiedSpaceStudio-Bridge.ps1
 ```
 
 To also start the optional Kimodo demo service:
@@ -263,15 +268,32 @@ To also start the optional Kimodo demo service:
 .\scripts\Start-EmbodiedSpaceStudio-Bridge.ps1 -WithDemo
 ```
 
-Equivalent Docker Compose command:
+Equivalent Docker Compose commands:
 
 ```powershell
+docker compose build
 docker compose up -d text-encoder ue-bridge
 ```
 
+To start the optional demo with raw Docker Compose:
+
+```powershell
+docker compose up -d demo
+```
+
+### Connect from Unreal Engine
+
+Open any Unreal project that has the Embodied Space Studio / KimodoMotionAuthoring plugin installed. In the plugin's Docker bridge settings or Generate tab, connect to:
+
+```text
+http://127.0.0.1:18027/bridge/v1
+```
+
+The Docker bridge is independent from the UE project folder. Multiple compatible UE projects can use the same local bridge by connecting to the same endpoint.
+
 ### Apply `.env` changes and recreate containers
 
-Docker reads environment variables when a container is created. If you edit `.env`, especially `TEXT_ENCODER_DEVICE`, simply clicking Stop/Start or Restart in Docker Desktop keeps the old container configuration and the old value.
+Docker reads environment variables when a container is created. If you edit `.env`, especially `TEXT_ENCODER_DEVICE`, model paths, ports, or `KIMODO_OUTPUT_HOST`, simply clicking Stop/Start or Restart in Docker Desktop can keep the old container configuration and the old value.
 
 After changing `.env`, run:
 
@@ -280,7 +302,7 @@ cd "<BridgeRoot>"
 docker compose up -d --force-recreate --no-build text-encoder ue-bridge
 ```
 
-Use `--build` only when the Docker image itself needs to be rebuilt, such as after changing `Dockerfile`, `docker_requirements.txt`, or dependency files:
+Use `--build` only when the Docker image itself needs to be rebuilt, such as after changing `Dockerfile`, `docker_requirements.txt`, `ue_bridge_service`, or dependency files:
 
 ```powershell
 cd "<BridgeRoot>"
@@ -340,8 +362,9 @@ To remove the compose containers completely:
 ```
 
 :::tip
-If Unreal Engine cannot connect from the Generate tab, first check `http://127.0.0.1:18027/bridge/v1/health`, then confirm that Docker Desktop is running and that `text-encoder` and `ue-bridge` are active. The Unreal plugin's **Connect Docker Bridge** button is intended to drive the same local bridge runtime expected by these scripts.
+If Unreal Engine cannot connect from the Generate tab, first check `http://127.0.0.1:18027/bridge/v1/health`, then confirm that Docker Desktop is running and that `text-encoder` and `ue-bridge` are active. The Unreal plugin's **Connect Docker Bridge** button is intended to connect to the same local bridge endpoint expected by these scripts.
 :::
+
 ## User Manual
 
 <Tabs groupId="embodied-space-studio-manual">
