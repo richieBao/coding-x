@@ -67,22 +67,26 @@ http://127.0.0.1:18027/bridge/v1
 
 Docker is required before you can start the Kimodo runtime. Embodied Space Studio does not install Docker automatically.
 
-1. Install **Docker Desktop** for Windows from the official Docker website.
-2. Start Docker Desktop and wait until the Docker Engine is running.
-3. On Windows, use the WSL2 backend. If WSL is not installed yet, open **PowerShell as Administrator** and run:
+1. Install WSL for the Docker Desktop WSL 2 backend. Open **PowerShell as Administrator** and run:
 
    ```powershell
-   wsl --install
+   wsl --install --no-distribution
+   wsl --update
    ```
 
-   If the installation prompts you to restart, restart your computer. Then open PowerShell and verify the installation:
+   The `--no-distribution` option installs WSL without installing an additional Linux distribution such as Ubuntu. Docker Desktop manages the WSL distributions it requires. If the installation prompts you to restart, restart your computer.
+
+2. Verify the installed WSL version:
 
    ```powershell
-   wsl --status
+   wsl --version
    ```
 
-   The status output should show `Default Version: 2`. For GPU generation, also install a compatible NVIDIA driver and make sure Docker Desktop can access the GPU.
-4. Open PowerShell and confirm Docker is available:
+   Docker Desktop requires WSL version 2.1.5 or later; using the latest available WSL version is recommended.
+3. Install **Docker Desktop** for Windows from the official Docker website.
+4. Start Docker Desktop and wait until the Docker Engine is running. In **Settings > General**, enable **Use WSL 2 based engine**. On supported systems, this option may already be enabled by default and may not be visible.
+5. For GPU generation, install a compatible NVIDIA driver and make sure Docker Desktop can access the GPU.
+6. Open PowerShell and confirm Docker is available:
 
 ```powershell
 docker --version
