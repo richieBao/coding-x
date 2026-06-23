@@ -1,7 +1,7 @@
 ---
 sidebar_position: 100
 title: "[Plugin] Embodied Space Studio"
-description: "Embodied Space Studio Unreal Engine plugin user manual for Fab review."
+description: "Embodied Space Studio Unreal Engine plugin user manual."
 ---
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
@@ -15,10 +15,90 @@ Embodied Space Studio is an Unreal Editor workflow panel for authoring embodied 
 The motions were generated using Kimodo, a controllable human motion generation system described in:
 Davis Rempe et al., "Kimodo: Scaling Controllable Human Motion Generation," arXiv:2603.15546, 2026. https://arxiv.org/abs/2603.15546
 
+## Quick Start
+
+:::tip Recommended: AI-assisted setup
+
+For the fastest setup, use an AI coding agent such as **Codex**, **GitHub Copilot**, or **Claude Code**. Give the agent access to the [KimodoBridge repository](https://github.com/richieBao/embodied-space-studio-kimodo-bridge) and ask it to configure and verify the local Docker runtime using the Docker Compose commands below. Review all generated commands and confirm local paths, Hugging Face credentials, model files, output paths, and GPU settings before running them.
+
+:::
+
+### Tutorial videos
+
+- **Installation Video:** https://youtu.be/sYrOYdtkInc?si=_aTTdwOSC7JV8r3H
+- **Operation Video:** https://youtu.be/dpvvsVyARRc?si=_TTuJCq-dLJXUQoZ
+
+### Configure the local Docker runtime
+
+1. Install and start **Docker Desktop** with the WSL 2 backend and NVIDIA GPU support where available.
+2. Clone or download the KimodoBridge repository and treat its local root folder as `<BridgeRoot>`:
+
+   [richieBao/embodied-space-studio-kimodo-bridge](https://github.com/richieBao/embodied-space-studio-kimodo-bridge)
+3. Sign in to Hugging Face in a web browser, request access to the gated Meta Llama model, and manually download the following four model packages from their **Files and versions** pages:
+
+   | Model package | Manual download page | Copy the downloaded files to |
+   |:--|:--|:--|
+   | Kimodo motion checkpoint: `nvidia/Kimodo-SOMA-RP-v1.1` | https://huggingface.co/nvidia/Kimodo-SOMA-RP-v1.1/tree/main | `<BridgeRoot>/checkpoints/Kimodo-SOMA-RP-v1.1/` |
+   | Meta Llama base model: `meta-llama/Meta-Llama-3-8B-Instruct` | https://huggingface.co/meta-llama/Meta-Llama-3-8B-Instruct/tree/main | `<BridgeRoot>/text-encoders/McGill-NLP/LLM2Vec-Meta-Llama-3-8B-Instruct-mntp/` |
+   | LLM2Vec MNTP adapter: `McGill-NLP/LLM2Vec-Meta-Llama-3-8B-Instruct-mntp` | https://huggingface.co/McGill-NLP/LLM2Vec-Meta-Llama-3-8B-Instruct-mntp/tree/main | `<BridgeRoot>/text-encoders/McGill-NLP/LLM2Vec-Meta-Llama-3-8B-Instruct-mntp-adapter/` |
+   | LLM2Vec supervised adapter: `McGill-NLP/LLM2Vec-Meta-Llama-3-8B-Instruct-mntp-supervised` | https://huggingface.co/McGill-NLP/LLM2Vec-Meta-Llama-3-8B-Instruct-mntp-supervised/tree/main | `<BridgeRoot>/text-encoders/McGill-NLP/LLM2Vec-Meta-Llama-3-8B-Instruct-mntp-supervised/` |
+
+   Download the repository files themselves, not only the README page. Preserve the filenames and folder contents. At minimum, verify that the Kimodo folder contains `model.safetensors` and `config.yaml`, the Meta Llama folder contains `model.safetensors.index.json` and all model shard files, and both adapter folders contain `adapter_model.safetensors` and `adapter_config.json`.
+4. Copy `.env.example` to `.env`. The default `TEXT_ENCODER_BASE_MODEL_HOST`, `TEXT_ENCODER_MNTP_ADAPTER_HOST`, and `TEXT_ENCODER_ADAPTER_HOST` values already match the folders above. Configure the Hugging Face cache/token path, `TEXT_ENCODER_DEVICE`, `UE_BRIDGE_HOST_PORT`, and `KIMODO_OUTPUT_HOST` for the local machine.
+5. Open **Docker Desktop**, open its built-in **Terminal**, change directory to the local KimodoBridge root, and build the Compose project:
+
+   ```powershell
+   cd "<BridgeRoot>"
+   docker compose build
+   docker compose create text-encoder ue-bridge
+   ```
+
+6. Start the required services either from the same Docker Desktop Terminal:
+
+   ```powershell
+   docker compose up -d text-encoder ue-bridge
+   ```
+
+   Or, in Docker Desktop, open **Containers > kimodo-main** and use the existing UI controls:
+
+   - **Start/Run** to start a created service container.
+   - **Stop** to stop it.
+   - **Restart** to restart it.
+
+   Start `text-encoder` first, wait until it is healthy, and then start `ue-bridge`.
+
+7. Confirm that both containers are running:
+
+   ```powershell
+   docker compose ps
+   docker compose logs --tail=100 ue-bridge
+   ```
+
+8. Verify the local bridge endpoints:
+
+   ```text
+   http://127.0.0.1:18027/bridge/v1/health
+   http://127.0.0.1:18027/bridge/v1/models
+   ```
+
+### Use the plugin in Unreal Editor
+
+1. Install and enable **Embodied Space Studio** in Unreal Engine 5.8. Restart Unreal Editor if requested.
+2. From the Unreal Editor main menu, select **Window > Embodied Space Studio**. This opens the dockable Embodied Space Studio editor window.
+3. Select the **Generate** tab in the right-side tab bar.
+4. Click **Connect Docker Bridge**, then click **Refresh Health**. Connection and health messages appear in **Bridge Output** and **Runtime Output**.
+5. Click **Refresh Models**, choose the required **Training dataset**, **Skeleton**, and **Version**, then click **Load model**.
+6. In **Kimodo Mesh / Skeleton**, click **Reset To SOMA Default**. This automatically fills **Kimodo Source Preview Mesh** and **Source Skeleton Override** with the default SOMA assets.
+7. Create or select a prompt section in the **Timeline**, enter a natural-language motion prompt, and add spatial constraints if required.
+8. Return to **Generate** and click **Generate**. The button becomes available after the bridge is healthy, a model is loaded, and valid prompt content exists.
+9. Use **Preview Target** for embedded preview. To review in the main Level viewport, click **Level Target**, then click **Spawn SOMA**. The spawned SOMA actor can be used for Level preview and for editing constraint poses directly in the Level viewport.
+10. Open **Export** to bake the selected motion into an Unreal Engine Animation Sequence.
+11. If an action is unavailable, review the status summaries and copyable **Bridge Output** and **Runtime Output** logs.
+
 :::info Main workflow
 
-1. Use **Generate** to start or check the bridge service, refresh the model catalog, choose dataset/skeleton/version, load a model, choose the source preview mesh or default SOMA, and generate motion from Timeline prompts and constraints.
-2. Use **Preview Target** for fast isolated inspection, or **Level Target** to work directly in the main Level viewport with **Spawn SOMA**, **Use Selected**, **Focus**, and **Unlink**.
+1. Open **Generate**, use **Connect Docker Bridge** and **Refresh Health** to connect to the local service, refresh the model catalog, choose dataset/skeleton/version, load a model, reset to the default SOMA source when needed, and generate motion from Timeline prompts and constraints.
+2. Use **Preview Target** for fast isolated inspection, or choose **Level Target** and **Spawn SOMA** to preview and edit constraint poses directly in the main Level viewport. **Use Selected**, **Focus**, and **Unlink** manage an existing Level Target.
 3. Use the **Timeline** to create prompt sections, scrub frames, play generated samples, import bulk prompt text, and place Full-Body, 2D Root, hand, and foot constraints.
 4. Use **Constraints** when a motion needs exact body poses, hand/foot placement, root path control, saved skeleton edit states, or external `constraints.json` input.
 5. Use **Load/Save** to reopen saved `ue_preview_manifest.json` outputs, save reusable example metadata, and open generated output folders.
@@ -66,8 +146,8 @@ http://127.0.0.1:18027/bridge/v1
 1. Buy/download and install the **Embodied Space Studio** plugin from Fab into any Unreal project that will use Kimodo generation.
 2. Install and start Docker Desktop.
 3. Download or clone the GitHub bridge repository to a user-chosen folder.
-4. Request Hugging Face access to `meta-llama/Meta-Llama-3-8B-Instruct`, then authenticate with a Hugging Face token.
-5. Download the required Kimodo checkpoint and text encoder model files into the bridge folder.
+4. Sign in to Hugging Face in a browser and request access to the gated `meta-llama/Meta-Llama-3-8B-Instruct` repository.
+5. Manually download the four model packages listed in **Download model files** and copy their files into the exact `checkpoints/` and `text-encoders/` folders under `<BridgeRoot>`.
 6. Copy `.env.example` to `.env`, then edit paths for your machine.
 7. Build/start the Docker bridge and connect to `http://127.0.0.1:18027/bridge/v1` from the plugin's **Generate** tab.
 
@@ -152,74 +232,86 @@ The services are built from `Dockerfile` into the `kimodo:1.0` image. The image 
 
 ### Download model files
 
-Model weights are intentionally not included in the GitHub repository. Download them from the official model pages and review their licenses before use.
+Model weights are intentionally not included in the GitHub repository. The user must sign in to Hugging Face, accept or request any required model access, manually download the files from each **Files and versions** page, and copy them into the exact `<BridgeRoot>` folders below. Review the license shown on each model page before downloading or using its files.
 
-Install the Hugging Face CLI and authenticate on the host machine:
+#### 1. Kimodo motion checkpoint
 
-```powershell
-pip install --upgrade huggingface_hub
-hf auth login
-```
+- **Model:** `nvidia/Kimodo-SOMA-RP-v1.1`
+- **Manual download:** https://huggingface.co/nvidia/Kimodo-SOMA-RP-v1.1/tree/main
+- **Copy all downloaded repository files to:**
 
-Download the Kimodo checkpoint:
+  ```text
+  <BridgeRoot>/checkpoints/Kimodo-SOMA-RP-v1.1/
+  ```
+
+- **Required files include:**
+
+  ```text
+  <BridgeRoot>/checkpoints/Kimodo-SOMA-RP-v1.1/model.safetensors
+  <BridgeRoot>/checkpoints/Kimodo-SOMA-RP-v1.1/config.yaml
+  <BridgeRoot>/checkpoints/Kimodo-SOMA-RP-v1.1/stats/
+  ```
+
+#### 2. Meta Llama 3 base model
+
+- **Model:** `meta-llama/Meta-Llama-3-8B-Instruct`
+- **Manual download:** https://huggingface.co/meta-llama/Meta-Llama-3-8B-Instruct/tree/main
+- This repository is gated. Request access and wait for approval before downloading.
+- **Copy all downloaded repository files to:**
+
+  ```text
+  <BridgeRoot>/text-encoders/McGill-NLP/LLM2Vec-Meta-Llama-3-8B-Instruct-mntp/
+  ```
+
+- Despite the local folder name ending in `-mntp`, this folder must contain the full raw Meta Llama base model. Verify that it includes `model.safetensors.index.json`, every referenced model shard, tokenizer files, and configuration files.
+
+#### 3. LLM2Vec MNTP adapter
+
+- **Model:** `McGill-NLP/LLM2Vec-Meta-Llama-3-8B-Instruct-mntp`
+- **Manual download:** https://huggingface.co/McGill-NLP/LLM2Vec-Meta-Llama-3-8B-Instruct-mntp/tree/main
+- **Copy all downloaded repository files to:**
+
+  ```text
+  <BridgeRoot>/text-encoders/McGill-NLP/LLM2Vec-Meta-Llama-3-8B-Instruct-mntp-adapter/
+  ```
+
+- Verify that this folder includes `adapter_model.safetensors` and `adapter_config.json`.
+- There is no separate Hugging Face repository named `...-mntp-adapter`; `-adapter` is only the required local folder name.
+
+#### 4. LLM2Vec supervised adapter
+
+- **Model:** `McGill-NLP/LLM2Vec-Meta-Llama-3-8B-Instruct-mntp-supervised`
+- **Manual download:** https://huggingface.co/McGill-NLP/LLM2Vec-Meta-Llama-3-8B-Instruct-mntp-supervised/tree/main
+- **Copy all downloaded repository files to:**
+
+  ```text
+  <BridgeRoot>/text-encoders/McGill-NLP/LLM2Vec-Meta-Llama-3-8B-Instruct-mntp-supervised/
+  ```
+
+- Verify that this folder includes `adapter_model.safetensors` and `adapter_config.json`.
+
+The completed manual folder layout should resemble:
 
 ```text
-https://huggingface.co/nvidia/Kimodo-SOMA-RP-v1.1
+<BridgeRoot>/
+├─ checkpoints/
+│  └─ Kimodo-SOMA-RP-v1.1/
+│     ├─ model.safetensors
+│     ├─ config.yaml
+│     └─ stats/
+└─ text-encoders/
+   └─ McGill-NLP/
+      ├─ LLM2Vec-Meta-Llama-3-8B-Instruct-mntp/
+      │  ├─ model.safetensors.index.json
+      │  ├─ model-*.safetensors
+      │  └─ tokenizer/configuration files
+      ├─ LLM2Vec-Meta-Llama-3-8B-Instruct-mntp-adapter/
+      │  ├─ adapter_model.safetensors
+      │  └─ adapter_config.json
+      └─ LLM2Vec-Meta-Llama-3-8B-Instruct-mntp-supervised/
+         ├─ adapter_model.safetensors
+         └─ adapter_config.json
 ```
-
-Place it under:
-
-```text
-<BridgeRoot>/checkpoints/Kimodo-SOMA-RP-v1.1/model.safetensors
-<BridgeRoot>/checkpoints/Kimodo-SOMA-RP-v1.1/config.yaml
-```
-
-Example command:
-
-```powershell
-hf download nvidia/Kimodo-SOMA-RP-v1.1 --local-dir checkpoints/Kimodo-SOMA-RP-v1.1
-```
-
-Before downloading the text encoder, open the gated Meta Llama model page, request access, and wait until your Hugging Face account has been granted access:
-
-```text
-https://huggingface.co/meta-llama/Meta-Llama-3-8B-Instruct
-```
-
-Kimodo's LLM2Vec text encoder uses three pieces:
-
-```text
-Raw gated base model:
-https://huggingface.co/meta-llama/Meta-Llama-3-8B-Instruct
-
-MNTP LoRA adapter:
-https://huggingface.co/McGill-NLP/LLM2Vec-Meta-Llama-3-8B-Instruct-mntp
-
-Supervised LoRA adapter:
-https://huggingface.co/McGill-NLP/LLM2Vec-Meta-Llama-3-8B-Instruct-mntp-supervised
-```
-
-Place them under:
-
-```text
-<BridgeRoot>/text-encoders/McGill-NLP/LLM2Vec-Meta-Llama-3-8B-Instruct-mntp/
-<BridgeRoot>/text-encoders/McGill-NLP/LLM2Vec-Meta-Llama-3-8B-Instruct-mntp-adapter/
-<BridgeRoot>/text-encoders/McGill-NLP/LLM2Vec-Meta-Llama-3-8B-Instruct-mntp-supervised/
-```
-
-Example manual download commands:
-
-```powershell
-hf download meta-llama/Meta-Llama-3-8B-Instruct --local-dir text-encoders/McGill-NLP/LLM2Vec-Meta-Llama-3-8B-Instruct-mntp
-hf download McGill-NLP/LLM2Vec-Meta-Llama-3-8B-Instruct-mntp --local-dir text-encoders/McGill-NLP/LLM2Vec-Meta-Llama-3-8B-Instruct-mntp-adapter
-hf download McGill-NLP/LLM2Vec-Meta-Llama-3-8B-Instruct-mntp-supervised --local-dir text-encoders/McGill-NLP/LLM2Vec-Meta-Llama-3-8B-Instruct-mntp-supervised
-```
-
-The `LLM2Vec-Meta-Llama-3-8B-Instruct-mntp` local folder should include the gated raw Meta Llama files such as `model.safetensors.index.json` and shard files. The `...-mntp-adapter` and `...-mntp-supervised` folders are LoRA adapters and should include `adapter_model.safetensors` and `adapter_config.json`.
-
-The `McGill-NLP/LLM2Vec-Meta-Llama-3-8B-Instruct-mntp` page may look small in the Hugging Face file browser because it is the MNTP adapter, not the full 8B base model. The full 8B shard files come from the gated `meta-llama/Meta-Llama-3-8B-Instruct` repository.
-
-Do not download a separate `McGill-NLP/LLM2Vec-Meta-Llama-3-8B-Instruct-mntp-adapter` repository. The recommended local folder is named `LLM2Vec-Meta-Llama-3-8B-Instruct-mntp-adapter` only to make its runtime role clear. Its source is `McGill-NLP/LLM2Vec-Meta-Llama-3-8B-Instruct-mntp`.
 
 Runtime loading order:
 
@@ -249,7 +341,7 @@ UE_BRIDGE_HOST_PORT=18027
 KIMODO_OUTPUT_HOST=D:/EmbodiedSpaceStudio/KimodoBridge/outputs
 ```
 
-`HF_HOME_HOST` should point to the Hugging Face cache that contains the token created by `hf auth login`. If you prefer to keep the cache inside the bridge folder, place the token under `<BridgeRoot>/.cache/huggingface/token` and use `HF_HOME_HOST=./.cache/huggingface`.
+`HF_HOME_HOST` sets the cache directory mounted into the containers. With the documented manual-download workflow, the required model weights are loaded from the local `checkpoints/` and `text-encoders/` folders, so a Hugging Face CLI download is not required. If another workflow needs authenticated Hugging Face access at runtime, place the approved account token in the selected cache directory.
 
 `KIMODO_OUTPUT_HOST` is the host folder where generated `motion.npz`, `ue_preview_manifest.json`, logs, diagnostics, and prompt metadata are written. The packaged start script resolves `KIMODO_OUTPUT_HOST=./outputs` to an absolute bridge-local path automatically. If you run raw `docker compose` commands, set `KIMODO_OUTPUT_HOST` to an absolute Windows path so Unreal can open generated results.
 
@@ -271,39 +363,32 @@ Use `auto` for CUDA when available with CPU fallback, `cuda` to force GPU, or `c
 
 ### Start the Unreal bridge runtime
 
-From PowerShell:
+Open **Docker Desktop**, open its built-in **Terminal**, and change directory to the local KimodoBridge repository:
 
 ```powershell
 cd "<BridgeRoot>"
-.\scripts\Start-EmbodiedSpaceStudio-Bridge.ps1 -Build
 ```
 
-This builds the image if needed, starts `text-encoder` and `ue-bridge` in detached mode, and prints the bridge health/model URLs plus the host output directory.
-
-After the first build, start without rebuilding:
-
-```powershell
-.\scripts\Start-EmbodiedSpaceStudio-Bridge.ps1
-```
-
-To also start the optional Kimodo demo service:
-
-```powershell
-.\scripts\Start-EmbodiedSpaceStudio-Bridge.ps1 -WithDemo
-```
-
-Equivalent Docker Compose commands:
+Build the image and create the Compose-configured containers:
 
 ```powershell
 docker compose build
+docker compose create text-encoder ue-bridge
+```
+
+Start the required services from the Docker Desktop Terminal:
+
+```powershell
 docker compose up -d text-encoder ue-bridge
 ```
 
-To start the optional demo with raw Docker Compose:
+Alternatively, after `docker compose create` has created the services, use the existing Docker Desktop UI controls:
 
-```powershell
-docker compose up -d demo
-```
+- Open **Containers > kimodo-main**.
+- Use **Start/Run** to start an already-created service container.
+- Use **Stop** to stop it.
+- Use **Restart** to restart it.
+- Start `text-encoder` first, wait until its status is healthy, and then start `ue-bridge`.
 
 ### Connect from Unreal Engine
 
@@ -400,6 +485,14 @@ If Unreal Engine cannot connect from the Generate tab, first check `http://127.0
 
 Connect Unreal Editor to the Kimodo runtime, choose the active generation model and source character, configure sampling/postprocess settings, and submit the current Timeline prompts plus native or external constraints for motion generation.
 
+### Where to find these controls
+
+From the Unreal Editor main menu, choose **Window > Embodied Space Studio**. In the dockable Embodied Space Studio window, use the **right-side control panel**. Its horizontal tab row is directly below **Bridge Output**; select **Generate**. The Generate action buttons are at the top of the scrollable tab content, below the **Source Character** summary. Scroll down in the same right-side panel to reach **Runtime Output**, **Model Selection**, **Kimodo Mesh / Skeleton**, and **Generate Settings**.
+
+:::info Bridge controls versus motion generation
+In the **Generate** tab, **Connect Docker Bridge** starts/connects the local bridge service and **Refresh Health** checks its status. The green **Generate** button does not start the bridge; it submits motion generation only after the bridge is healthy, a model is loaded, and the Timeline contains a valid prompt.
+:::
+
 ![ess](./img/embodiedSpaceStudio/ess_04_opt.webp)
 
 ### Action Buttons
@@ -446,6 +539,10 @@ First author prompts in the Timeline, then add constraints if needed, confirm th
 ### Purpose
 
 The main panel outside the sidebar is where generated motion is viewed, scrubbed, and edited against prompts and constraints. It is also where users choose whether edits happen inside the embedded Preview viewport or directly in the main Unreal Level viewport.
+
+### Where to find these controls
+
+Open **Window > Embodied Space Studio**. These controls are not a right-side sidebar tab. **Preview Target**, **Level Target**, **Spawn SOMA**, **Use Selected**, **Focus**, and **Unlink** are in the header above the large central preview area. The embedded Preview viewport is directly below that header. The **Timeline** spans the bottom of the Embodied Space Studio window; if it is hidden, open the right-side **Visualize** tab and enable **Show Timeline**.
 
 ### Preview Header
 
@@ -499,6 +596,10 @@ Author prompt timing first, generate or load a preview, use playback to find imp
 
 Create, edit, save, load, and filter native Timeline constraints and optional external `constraints.json` input so the generated motion respects authored body poses, hand/foot placement, and 2D root path intent.
 
+### Where to find these controls
+
+Open **Window > Embodied Space Studio**. In the right-side tab row below **Bridge Output**, select **Constraints**. The Constraints controls appear below the **Source Character** summary in the scrollable right-side panel. Constraint tracks and keys are created in the **Timeline at the bottom of the window**. Their transform handles are edited either in the central embedded Preview viewport or, after choosing **Level Target**, in the main Unreal Level viewport.
+
 ![ess](./img/embodiedSpaceStudio/ess_07_opt.webp)
 
 ### Constraints Section
@@ -545,6 +646,10 @@ Load or generate a preview, scrub to the frame, enable editing, choose Full-Body
 
 Reopen generated motion previews, save reusable example metadata, and inspect generated output folders without running generation again.
 
+### Where to find these controls
+
+Open **Window > Embodied Space Studio**. In the right-side tab row below **Bridge Output**, select **Load/Save**. The **Saved Motion Preview**, **Examples**, and **Exports** controls are shown in that scrollable right-side tab below the **Source Character** summary. Loaded motion appears in the central Preview viewport or on the active Level Target.
+
 ![ess](./img/embodiedSpaceStudio/ess_08_opt.webp)
 
 ### Saved Motion Preview
@@ -573,6 +678,10 @@ Load saved preview manifests for review, save example metadata for prompt/constr
 ### Purpose
 
 Adjust playback, visual overlays, camera display, and Timeline/interface visibility. These settings help inspect motion and constraints without changing the generated motion data.
+
+### Where to find these controls
+
+Open **Window > Embodied Space Studio**. In the right-side tab row below **Bridge Output**, select **Visualize**. The **Playback**, **Body Options**, **Camera Options**, and **Interface Options** controls appear in the scrollable right-side panel below the **Source Character** summary. Their results are visible immediately in the central Preview viewport, the bottom Timeline, or the active Level Target.
 
 ![ess](./img/embodiedSpaceStudio/ess_09_opt.webp)
 
@@ -609,6 +718,10 @@ After generation, inspect the mesh first, then enable skeleton and foot contacts
 ### Purpose
 
 Convert the active Kimodo preview clip into Unreal assets. Export can bake a SOMA Animation Sequence directly, or retarget the motion through IK Rig / IK Retargeter assets to Manny, Quinn, MetaHuman, or a custom target character.
+
+### Where to find these controls
+
+Open **Window > Embodied Space Studio**. In the right-side tab row below **Bridge Output**, select **Export**. All export controls are in the scrollable right-side panel below the **Source Character** summary. Begin with **SOMA Animation Sequence** at the top, then scroll through **Target Character**, **KIMODO Export Postprocess**, and **Retarget Assets**. Exported assets are written to the `/Game` content location shown by the active output settings and can be inspected in Unreal Editor's Content Browser.
 
 ![ess](./img/embodiedSpaceStudio/ess_10_opt.webp)
 
@@ -662,6 +775,10 @@ Generate or load the motion, export/refresh rooted SOMA source, choose target pr
 
 Run production-scale generation and export. Batch can generate from a Markdown prompt file, or skip generation and export from an existing folder of completed SOMA jobs.
 
+### Where to find these controls
+
+Open **Window > Embodied Space Studio**. In the right-side tab row below **Bridge Output**, select **Batch**. The batch source selector is at the top of the scrollable right-side tab, followed by **Animation Sequence Outputs**, **Save Path**, naming preview, and **Execution** controls. Batch status is displayed in this tab, while detailed service messages remain available in **Bridge Output** above the tab row and **Runtime Output** in the Generate tab.
+
 ![ess](./img/embodiedSpaceStudio/ess_14_opt.webp)
 
 ### Prompt Source
@@ -704,6 +821,10 @@ Validate one Generate + Export manually, then use Batch with a clean output fold
 
 Production utilities that do not fit a single Generate/Export run: level placement, playable MetaHuman setup, merged MetaHuman meshes, Fab package assembly, offline animation cleanup, MetaHuman Level Sequences, and prompt subtitle overlays.
 
+### Where to find these controls
+
+Open **Window > Embodied Space Studio**. In the right-side tab row below **Bridge Output**, select **Misc**. The Misc page is a long, scrollable stack of expandable utility panels below the **Source Character** summary. Click a panel header—such as **Batch Level Layout**, **MetaHuman Player Character**, **Fab Product Package**, or **Soft Collision Avoidance**—to expand that tool and reveal its fields and action buttons.
+
 ### Batch Level Layout
 
 **Overview:** Places exported batch animations into the current level as preview actors with readable labels, so a full motion pack can be reviewed spatially.
@@ -741,7 +862,7 @@ Production utilities that do not fit a single Generate/Export run: level placeme
 
 ### Fab Product Package
 
-**Overview:** Assembles exported animations, demo assets, supporting files, and motion indexes into a clean product content root for Fab delivery/review.
+**Overview:** Assembles exported animations, demo assets, supporting files, and motion indexes into a clean product content root for Fab delivery.
 
 ![ess](./img/embodiedSpaceStudio/ess_18_opt.webp)
 
