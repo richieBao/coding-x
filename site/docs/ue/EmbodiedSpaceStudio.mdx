@@ -28,6 +28,24 @@ For the fastest setup, use an AI coding agent such as **Codex**, **GitHub Copilo
 - **Installation Video:** https://youtu.be/sYrOYdtkInc?si=_aTTdwOSC7JV8r3H
 - **Operation Video:** https://youtu.be/dpvvsVyARRc?si=_TTuJCq-dLJXUQoZ
 
+### Download the SOMA Source Kit
+
+The Fab plugin does not bundle the Kimodo/SOMA source meshes or their third-party license files. Download the SOMA Source Kit separately, extract it to a user-chosen folder, and keep both glTF files together.
+
+<div className="downloadGrid grid">
+  <a
+    className="button button--primary"
+    href="/coding-x/downloads/EmbodiedSpaceStudio_SOMA_Source_Kit.zip"
+    download
+  >
+    Download Embodied Space Studio SOMA Source Kit
+  </a>
+</div>
+
+The ZIP contains `SK_KimodoSOMA.gltf`, `SK_KimodoSOMA_Rooted.gltf`, `Kimodo_LICENSE.txt`, `Kimodo_NOTICE.md`, setup instructions, and integrity hashes.
+
+**ZIP SHA-256:** `E15C9CE9B920AAB471039D03F048CB49F00DBCC72D6F4CEECCE210B072BE18CC`
+
 ### Configure the local Docker runtime
 
 1. Install and start **Docker Desktop** with the WSL 2 backend and NVIDIA GPU support where available.
@@ -109,7 +127,7 @@ When Embodied Space Studio is enabled, Unreal Editor may request a restart while
 4. Select the **Generate** tab in the right-side tab bar.
 5. Click **Connect Docker Bridge**, then click **Refresh Health**. Connection and health messages appear in **Bridge Output** and **Runtime Output**.
 6. Click **Refresh Models**, choose the required **Training dataset**, **Skeleton**, and **Version**, then click **Load model**.
-7. In **Kimodo Mesh / Skeleton**, click **Reset To SOMA Default**. This automatically fills **Kimodo Source Preview Mesh** and **Source Skeleton Override** with the default SOMA assets.
+7. Download and extract the **SOMA Source Kit** above. In **Generate > Kimodo Mesh / Skeleton**, click **Choose & Import Kimodo SOMA Mesh / Skeleton**, then select `SK_KimodoSOMA.gltf`. Keep `SK_KimodoSOMA_Rooted.gltf` beside it; the plugin imports the Mesh/Skeleton into the current Unreal project and remembers the Kit path.
 8. Create or select a prompt section in the **Timeline**, enter a natural-language motion prompt, and add spatial constraints if required.
 9. Return to **Generate** and click **Generate**. The button becomes available after the bridge is healthy, a model is loaded, and valid prompt content exists.
 10. Use **Preview Target** for embedded preview. For the main Level viewport, click **Level Target**, then click **Spawn SOMA**. The spawned SOMA actor can be used for Level preview and for editing constraint poses directly in the Level viewport.
@@ -118,7 +136,7 @@ When Embodied Space Studio is enabled, Unreal Editor may request a restart while
 
 :::info Main workflow
 
-1. Open **Generate**, use **Connect Docker Bridge** and **Refresh Health** to connect to the local service, refresh the model catalog, choose dataset/skeleton/version, load a model, reset to the default SOMA source when needed, and generate motion from Timeline prompts and constraints.
+1. Open **Generate**, import `SK_KimodoSOMA.gltf` from the separately downloaded SOMA Source Kit, use **Connect Docker Bridge** and **Refresh Health** to connect to the local service, refresh the model catalog, choose dataset/skeleton/version, load a model, and generate motion from Timeline prompts and constraints.
 2. Use **Preview Target** for fast isolated inspection, or choose **Level Target** and **Spawn SOMA** to preview and edit constraint poses directly in the main Level viewport. **Use Selected**, **Focus**, and **Unlink** manage an existing Level Target.
 3. Use the **Timeline** to create prompt sections, scrub frames, play generated samples, import bulk prompt text, and place Full-Body, 2D Root, hand, and foot constraints.
 4. Use **Constraints** when a motion needs exact body poses, hand/foot placement, root path control, saved skeleton edit states, or external `constraints.json` input.
@@ -165,12 +183,14 @@ http://127.0.0.1:18027/bridge/v1
 ### Install order
 
 1. Buy/download and install the **Embodied Space Studio** plugin from Fab into any Unreal project that will use Kimodo generation.
-2. Install and start Docker Desktop.
-3. Download or clone the GitHub bridge repository to a user-chosen folder.
-4. Sign in to Hugging Face in a browser and request access to the gated `meta-llama/Meta-Llama-3-8B-Instruct` repository.
-5. Manually download the four model packages listed in **Download model files** and copy their files into the exact `checkpoints/` and `text-encoders/` folders under `<BridgeRoot>`.
-6. Copy `.env.example` to `.env`, then edit paths for your machine.
-7. Build/start the Docker bridge and connect to `http://127.0.0.1:18027/bridge/v1` from the plugin's **Generate** tab.
+2. Download and extract the **SOMA Source Kit** from this page. Keep `SK_KimodoSOMA.gltf` and `SK_KimodoSOMA_Rooted.gltf` in the same folder.
+3. Install and start Docker Desktop.
+4. Download or clone the GitHub bridge repository to a user-chosen folder.
+5. Sign in to Hugging Face in a browser and request access to the gated `meta-llama/Meta-Llama-3-8B-Instruct` repository.
+6. Manually download the four model packages listed in **Download model files** and copy their files into the exact `checkpoints/` and `text-encoders/` folders under `<BridgeRoot>`.
+7. Copy `.env.example` to `.env`, then edit paths for your machine.
+8. Build/start the Docker bridge and connect to `http://127.0.0.1:18027/bridge/v1` from the plugin's **Generate** tab.
+9. In **Generate > Kimodo Mesh / Skeleton**, choose and import `SK_KimodoSOMA.gltf` before previewing or exporting SOMA motion.
 
 ### Prerequisite: install Docker Desktop
 
@@ -536,9 +556,11 @@ In the **Generate** tab, **Connect Docker Bridge** starts/connects the local bri
 
 ### Kimodo Mesh / Skeleton
 
-1. **Kimodo Source Preview Mesh** overrides the source mesh used for preview binding and request metadata.
-2. **Source Skeleton Override** can provide a skeleton when a mesh is not enough or when a specific binding is required.
-3. **Reset To SOMA Default** clears custom source selections and returns to the default Kimodo/SOMA source character.
+1. **Choose & Import Kimodo SOMA Mesh / Skeleton** opens a file picker. Select `SK_KimodoSOMA.gltf` from the separately downloaded SOMA Source Kit. The plugin validates that the source contains `Hips` and does not contain the synthetic `root` bone, imports the Mesh/Skeleton into `/Game/EmbodiedSpaceStudio/Kimodo/SOMA`, and remembers the external Kit path for Rooted SOMA generation.
+2. The **SOMA Source Kit** status line shows the currently selected external glTF path. Keep `SK_KimodoSOMA_Rooted.gltf` in the same folder as the selected original file.
+3. **Kimodo Source Preview Mesh** overrides the source mesh used for preview binding and request metadata.
+4. **Source Skeleton Override** can provide a skeleton when a mesh is not enough or when a specific binding is required.
+5. **Reset To SOMA Default** clears custom source selections and returns to the already imported Kimodo/SOMA source asset. If the asset is not installed, it prompts you to use the external Source Kit import button; it no longer imports a bundled fallback.
 
 ### Generate Settings
 
@@ -749,7 +771,7 @@ Open **Window > Embodied Space Studio**. In the right-side tab row below **Bridg
 ### SOMA Animation Sequence
 
 1. **SOMA Source Mesh** selects the mesh used when baking the Kimodo/SOMA source animation.
-2. **Import / Select SOMA Mesh** imports or selects the bundled/default SOMA source mesh asset.
+2. Import the original SOMA Mesh/Skeleton from **Generate > Kimodo Mesh / Skeleton** before using Export.
 3. **Ground SOMA Before Retarget** grounds the SOMA source animation before it is used as retarget source data.
 4. **Export SOMA Animation Sequence** writes the active preview clip to a UE AnimSequence for the selected SOMA source mesh.
 5. The retargeting summary reports active source/target readiness and why export buttons may be disabled.
@@ -758,10 +780,9 @@ Open **Window > Embodied Space Studio**. In the right-side tab row below **Bridg
 
 1. **Manny**, **Quinn**, and **MetaHuman** preset buttons switch the active target profile and restore profile-specific mesh, skeleton, physics, retargeter, and runtime postprocess settings where saved.
 2. **Target Skeleton**, **Target Mesh**, and **Target Physics Asset** choose the destination skeleton/mesh/collision assets. Compatible meshes or physics assets may be auto-filled from the selected skeleton or mesh.
-3. **Generate / Refresh Rooted SOMA Source** selects/imports `SK_KimodoSOMA_Rooted`, refreshes the SOMA source IKRig, and rebuilds rooted SOMA retarget assets for the current target.
-4. **Allow Legacy SOMA Source** exists for legacy fallback/debugging. Normal production export should use the rooted SOMA source.
-5. **SOMA To Target IK Retargeter** selects the authored/generated RTG used by Export Target Animation Sequence.
-6. **Root Trajectory Source** chooses whether target export follows UE Batch root trajectory or KIMODO/SOMA smooth root trajectory where supported. Rooted SOMA rejects unsupported KIMODO smooth-root fallback and prefers UE Batch validation.
+3. **Generate / Refresh Rooted SOMA Source** finds `SK_KimodoSOMA_Rooted.gltf` beside the original Source Kit file selected in Generate, imports or refreshes the Rooted SOMA Mesh/Skeleton in the current project, refreshes `IKR_SOMA_Source_Rooted`, and rebuilds the rooted SOMA retarget assets for the current target. It does not read a glTF bundled inside the Fab plugin.
+4. **SOMA To Target IK Retargeter** selects the authored/generated RTG used by Export Target Animation Sequence.
+5. **Root Trajectory Source** chooses whether target export follows UE Batch root trajectory or KIMODO/SOMA smooth root trajectory where supported. Rooted SOMA rejects unsupported KIMODO smooth-root fallback and prefers UE Batch validation.
 
 ### KIMODO Export Postprocess
 
@@ -787,7 +808,7 @@ Open **Window > Embodied Space Studio**. In the right-side tab row below **Bridg
 
 ### Recommended Workflow
 
-Generate or load the motion, export/refresh rooted SOMA source, choose target preset/assets, export or verify the RTG, check collision and foot-anchor settings, then run Export Target Animation Sequence.
+Import the original SOMA source from the external Kit in Generate, generate or load the motion, use **Generate / Refresh Rooted SOMA Source** in Export, choose target preset/assets, export or verify the RTG, check collision and foot-anchor settings, then run Export Target Animation Sequence.
 
   </TabItem>
   <TabItem value="batch" label="Batch">
